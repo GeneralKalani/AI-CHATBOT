@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EduBot P13 - Asisten Belajar Mandiri & AI Chatbot Offline</title>
+  <meta name="description" content="Asisten belajar interaktif offline berbasis browser untuk materi Bahan Latihan P13 dengan generator kuis adaptif, filtrasi chat kontekstual, dan dukungan upload folder materi baru.">
+  
+  <!-- Modern Typography Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- CSS Stylesheet -->
+  <link rel="stylesheet" href="css/style.css">
+  
+  <!-- Vendor PDF.js for offline in-browser PDF extraction -->
+  <script src="js/vendor/pdf.min.js"></script>
+</head>
+<body>
+
+  <!-- App Header -->
+  <header class="app-header glass">
+    <div class="brand-wrapper" id="brandBtn">
+      <div class="brand-icon">🎓</div>
+      <div>
+        <div class="brand-title">
+          EduBot P13
+          <span class="brand-badge">Offline AI</span>
+        </div>
+        <div class="brand-subtitle">Asisten Belajar Mandiri & Generator Kuis</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" role="tablist">
+      <button class="tab-btn active" data-tab="tab-chat" id="tabBtnChat" role="tab" aria-selected="true">
+        <span class="tab-icon">💬</span>
+        <span class="tab-text">Chat Asisten</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-quiz" id="tabBtnQuiz" role="tab" aria-selected="false">
+        <span class="tab-icon">📝</span>
+        <span class="tab-text">Generator Kuis</span>
+      </button>
+      <button class="tab-btn" data-tab="tab-modules" id="tabBtnModules" role="tab" aria-selected="false">
+        <span class="tab-icon">📚</span>
+        <span class="tab-text">Koleksi Modul</span>
+      </button>
+    </nav>
+
+    <!-- Header Actions -->
+    <div class="header-actions">
+      <div class="badge-status" id="offlineStatusBadge" title="Aplikasi berjalan 100% offline di browser Anda">
+        <span class="status-dot"></span>
+        <span id="engineStatusText">Offline Siap</span>
+      </div>
+      <button class="btn-icon" id="themeToggleBtn" title="Ganti Tema (Gelap / Terang)">
+        🌓
+      </button>
+      <button class="btn-icon" id="settingsBtn" title="Pengaturan AI & Sistem">
+        ⚙️
+      </button>
+    </div>
+  </header>
+
+  <!-- Main View Container -->
+  <main class="app-container">
+
+    <!-- ==============================================
+         TAB 1: CHAT ASISTEN
+         ============================================== -->
+    <section class="tab-content active" id="tab-chat">
+      <div class="chat-layout">
+        
+        <!-- Chat Left Sidebar -->
+        <aside class="chat-sidebar" id="chatSidebar">
+          <div class="sidebar-header">
+            <div class="sidebar-title">
+              <span>📖</span>
+              <span>Modul Bahan P13</span>
+            </div>
+            <button class="btn-ghost-sm" id="manageModulesShortcut" title="Kelola Modul">
+              Kelola
+            </button>
+          </div>
+          
+          <div class="sidebar-scroll">
+            <div>
+              <div class="section-label">
+                <span>Topik Tersedia</span>
+                <span id="activeModuleCountBadge" class="brand-badge" style="background: rgba(244, 63, 94, 0.12); color: #fb7185; border-color: rgba(244, 63, 94, 0.3);">0 Modul Aktif</span>
+              </div>
+              <div class="subject-chips" id="sidebarSubjectChips">
+                <div style="font-size: 0.85rem; color: var(--text-muted); font-style: italic; padding: 0.6rem 0.2rem;">
+                  tidak ada modul tersedia
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="section-label">
+                <span>Ide Pertanyaan Belajar</span>
+              </div>
+              <div class="prompt-list" id="sidebarPromptList">
+                <div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic; padding: 0.4rem 0.2rem; line-height: 1.4;">
+                  tidak ada modul tersedia. Unggah modul untuk menampilkan ide pertanyaan.
+                </div>
+              </div>
+            </div>
+
+            <div style="margin-top: auto; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+              <button class="btn-upload" id="sidebarQuickQuizBtn" style="width: 100%; justify-content: center;">
+                ⚡ Buat Kuis Cepat
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Chat Main Area -->
+        <div class="chat-main">
+          
+          <!-- Context Status Banner -->
+          <div class="chat-context-bar">
+            <div class="context-info">
+              <span>🎯 <strong>Mode Filtrasi Aktif:</strong> Jawaban berbasis modul otomatis. Pertanyaan di luar modul dijawab kontekstual.</span>
+            </div>
+            <div class="chat-context-actions">
+              <button class="btn-ghost-sm" id="clearChatBtn" title="Bersihkan riwayat chat">
+                🗑️ Bersihkan Chat
+              </button>
+            </div>
+          </div>
+
+          <!-- Messages Scroll View -->
+          <div class="chat-messages" id="chatMessagesStream">
+            <!-- Welcome Hero (shown on first load / empty chat) -->
+            <div class="chat-welcome" id="chatWelcomeHero">
+              <div class="welcome-avatar">🤖</div>
+              <h1 class="welcome-title">Selamat Datang di EduBot P13</h1>
+              <p class="welcome-desc">
+                Asisten Belajar Mandiri berbasis AI lokal offline. Saat ini <strong>tidak ada modul tersedia</strong>. Silakan unggah folder materi Anda (seperti folder Bahan Latihan P13 atau folder materi lainnya) agar AI dapat membaca dan memproses kuis berdasarkan modul Anda!
+              </p>
+
+              <div class="welcome-grid" id="welcomeCtaGrid">
+                <div class="welcome-card" id="welcomeUploadFolderCard" style="cursor: pointer;">
+                  <div class="welcome-card-icon">📁</div>
+                  <div class="welcome-card-title">Upload Folder Materi</div>
+                  <div class="welcome-card-subtitle">Pilih seluruh folder modul dari komputer</div>
+                </div>
+                <div class="welcome-card" id="welcomeUploadFileCard" style="cursor: pointer;">
+                  <div class="welcome-card-icon">📄</div>
+                  <div class="welcome-card-title">Upload File Materi</div>
+                  <div class="welcome-card-subtitle">Unggah file satuan PDF, TXT, atau Markdown</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat Input Area -->
+          <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+              <textarea 
+                class="chat-textarea" 
+                id="chatInputTextarea" 
+                placeholder="Ajukan pertanyaan mengenai materi modul P13 atau topik lainnya..." 
+                rows="1"
+              ></textarea>
+              <div class="chat-input-toolbar">
+                <div class="toolbar-left">
+                  <button class="toolbar-btn" id="voiceInputBtn" title="Input Suara (Mikrofon)">
+                    🎙️
+                  </button>
+                  <button class="toolbar-btn" id="shortcutQuizGenBtn" title="Buat kuis berdasarkan chat">
+                    📝
+                  </button>
+                </div>
+                <div class="toolbar-right">
+                  <button class="btn-send" id="sendMessageBtn">
+                    <span>Kirim</span>
+                    <span>➔</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="input-hint">
+              Tekan <kbd>Enter</kbd> untuk mengirim, <kbd>Shift + Enter</kbd> untuk baris baru.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ==============================================
+         TAB 2: GENERATOR KUIS
+         ============================================== -->
+    <section class="tab-content" id="tab-quiz">
+      <div class="quiz-view-container">
+        <div class="quiz-content-wrapper">
+
+          <!-- 1. PANEL PENGATURAN KUIS (Pre-Quiz Configuration) -->
+          <div class="quiz-panel-card" id="quizConfigPanel">
+            <div class="panel-header">
+              <div>
+                <h2 class="panel-title">
+                  <span>📝</span>
+                  <span>Panel Generator Kuis Adaptif</span>
+                </h2>
+                <p class="panel-subtitle">
+                  Sesuaikan parameter kuis sebelum memulai: pilih modul rujukan, format soal, tingkat kesulitan, dan jumlah pertanyaan.
+                </p>
+              </div>
+              <button class="btn-secondary" id="randomQuickQuizBtn">
+                🎲 Kuis Acak Kilat
+              </button>
+            </div>
+
+            <form id="quizConfigForm">
+              <!-- Selection: Target Modules -->
+              <div class="form-group">
+                <label class="form-label">
+                  1. Pilih Modul Rujukan Kuis
+                  <span class="form-label-desc">(Pilih satu, beberapa, atau seluruh modul)</span>
+                </label>
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.75rem;">
+                  <button type="button" class="btn-ghost-sm" id="selectAllQuizModsBtn">Pilih Semua Modul</button>
+                  <button type="button" class="btn-ghost-sm" id="deselectAllQuizModsBtn">Hapus Pilihan</button>
+                </div>
+                <div class="quiz-modules-grid" id="quizModulesSelectGrid">
+                  <!-- Dynamically populated from active modules -->
+                </div>
+              </div>
+
+              <!-- Selection: Question Formats -->
+              <div class="form-group">
+                <label class="form-label">
+                  2. Bentuk / Tipe Soal
+                  <span class="form-label-desc">(Tentukan tipe evaluasi yang Anda inginkan)</span>
+                </label>
+                <div class="pill-selector" id="quizTypeSelector">
+                  <button type="button" class="pill-option active" data-type="mix">
+                    <span>🔀</span>
+                    <span>Campuran (Mix Semua)</span>
+                  </button>
+                  <button type="button" class="pill-option" data-type="mc">
+                    <span>🔘</span>
+                    <span>Pilihan Ganda (A, B, C, D)</span>
+                  </button>
+                  <button type="button" class="pill-option" data-type="tf">
+                    <span>⚖️</span>
+                    <span>Benar / Salah (True or False)</span>
+                  </button>
+                  <button type="button" class="pill-option" data-type="essay">
+                    <span>✍️</span>
+                    <span>Essay / Isian Terbuka</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Selection: Question Counts & Difficulty -->
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem;">
+                <div class="form-group">
+                  <label class="form-label">3. Jumlah Soal</label>
+                  <div class="pill-selector" id="quizCountSelector">
+                    <button type="button" class="pill-option" data-count="3">3 Soal</button>
+                    <button type="button" class="pill-option active" data-count="5">5 Soal</button>
+                    <button type="button" class="pill-option" data-count="10">10 Soal</button>
+                    <button type="button" class="pill-option" data-count="15">15 Soal</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">4. Tingkat Kesulitan</label>
+                  <div class="pill-selector" id="quizDiffSelector">
+                    <button type="button" class="pill-option" data-diff="easy">Mudah (Fakta)</button>
+                    <button type="button" class="pill-option active" data-diff="medium">Sedang (Pemahaman)</button>
+                    <button type="button" class="pill-option" data-diff="hard">Sulit (Analisis)</button>
+                  </div>
+                </div>
+
+                <div class="form-group">
+                  <label class="form-label">5. Batas Waktu (Timer)</label>
+                  <div class="pill-selector" id="quizTimerSelector">
+                    <button type="button" class="pill-option active" data-timer="0">Tanpa Batas</button>
+                    <button type="button" class="pill-option" data-timer="5">5 Menit</button>
+                    <button type="button" class="pill-option" data-timer="10">10 Menit</button>
+                    <button type="button" class="pill-option" data-timer="15">15 Menit</button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Form Footer -->
+              <div class="quiz-form-footer">
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                  💡 Kuis dirangkai otomatis dari ringkasan & isi buku teks modul aktif.
+                </div>
+                <button type="submit" class="btn-primary-lg" id="startQuizBtn">
+                  <span>🚀 Mulai Kuis Sekarang</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- 2. INTERACTIVE QUIZ RUNNER (Taking the quiz) -->
+          <div class="quiz-runner-container" id="quizRunnerContainer">
+            <!-- Runner Top Bar -->
+            <div class="quiz-runner-header">
+              <div class="quiz-progress-text" id="runnerQuestionCounter">
+                Soal 1 dari 5
+              </div>
+              <div class="quiz-progress-bar-wrap">
+                <div class="quiz-progress-bar" id="runnerProgressBar"></div>
+              </div>
+              <div class="quiz-timer" id="runnerTimerDisplay" style="display: none;">
+                ⏱️ <span id="timerCountdown">00:00</span>
+              </div>
+              <button class="btn-ghost-sm" id="abandonQuizBtn" title="Batalkan dan kembali ke panel">
+                ✕ Keluar Kuis
+              </button>
+            </div>
+
+            <!-- Question Jump Pills -->
+            <div class="question-nav-pills" id="runnerNavPills">
+              <!-- 1, 2, 3... -->
+            </div>
+
+            <!-- Question Card -->
+            <div class="question-card" id="runnerQuestionCard">
+              <div class="question-badges">
+                <span class="q-badge q-badge-subject" id="runnerSubjectBadge">Biologi</span>
+                <span class="q-badge q-badge-type" id="runnerTypeBadge">Pilihan Ganda</span>
+              </div>
+              
+              <div class="question-stem" id="runnerQuestionStem">
+                Memuat pertanyaan...
+              </div>
+
+              <!-- Dynamic Interactive Answer Zone -->
+              <div id="runnerAnswerZone">
+                <!-- Dynamically populated according to question type -->
+              </div>
+            </div>
+
+            <!-- Runner Navigation Footer -->
+            <div class="quiz-runner-footer">
+              <button class="btn-secondary" id="runnerPrevBtn">
+                ⬅️ Sebelumnya
+              </button>
+              <div style="display: flex; gap: 0.75rem;">
+                <button class="btn-secondary" id="runnerSkipBtn">
+                  Lewati ➡️
+                </button>
+                <button class="btn-primary-lg" id="runnerNextBtn">
+                  Berikutnya ➔
+                </button>
+                <button class="btn-primary-lg" id="runnerSubmitBtn" style="display: none; background: var(--accent-emerald);">
+                  ✓ Kumpulkan Kuis
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. QUIZ RESULTS & REVIEW SCREEN -->
+          <div class="quiz-result-container" id="quizResultContainer">
+            <!-- Hero Result Card -->
+            <div class="result-card-hero">
+              <div class="result-score-circle">
+                <span class="score-num" id="resultScoreNum">80</span>
+                <span class="score-label">SKOR ANDA</span>
+              </div>
+              <div>
+                <h3 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 0.3rem;" id="resultGradeTitle">
+                  Predikat: Sangat Memuaskan (A)
+                </h3>
+                <p style="color: var(--text-secondary); font-size: 0.9rem;" id="resultStatusDesc">
+                  Selamat! Anda telah memahami sebagian besar materi evaluasi dengan sangat baik.
+                </p>
+              </div>
+              <div class="result-stats-row">
+                <div class="result-stat-item">
+                  <span class="stat-val" id="resultStatCorrect" style="color: var(--accent-emerald);">4</span>
+                  <span class="stat-lbl">Jawaban Benar</span>
+                </div>
+                <div class="result-stat-item">
+                  <span class="stat-val" id="resultStatTotal">5</span>
+                  <span class="stat-lbl">Total Soal</span>
+                </div>
+                <div class="result-stat-item">
+                  <span class="stat-val" id="resultStatPercent">80%</span>
+                  <span class="stat-lbl">Akurasi</span>
+                </div>
+              </div>
+              <div style="display: flex; gap: 0.75rem; margin-top: 0.5rem; flex-wrap: wrap; justify-content: center;">
+                <button class="btn-secondary" id="retakeQuizBtn">
+                  🔄 Ulangi Kuis Ini
+                </button>
+                <button class="btn-primary-lg" id="newQuizFromResultsBtn">
+                  ✨ Buat Kuis Baru
+                </button>
+                <button class="btn-secondary" id="printQuizReportBtn">
+                  🖨️ Cetak / Simpan Laporan
+                </button>
+              </div>
+            </div>
+
+            <!-- Detailed Question Breakdown Review -->
+            <div>
+              <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem;">
+                📋 Pembahasan & Kunci Jawaban Lengkap
+              </h3>
+              <div id="quizReviewList" style="display: flex; flex-direction: column; gap: 1rem;">
+                <!-- Dynamically populated review cards -->
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <!-- ==============================================
+         TAB 3: KOLEKSI MODUL & UPLOAD FOLDER
+         ============================================== -->
+    <section class="tab-content" id="tab-modules">
+      <div class="modules-view-container">
+        <div class="modules-content-wrapper">
+
+          <!-- Modules Header Card with Upload Triggers -->
+          <div class="modules-header-card">
+            <div>
+              <h2 style="font-size: 1.5rem; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 0.5rem;">
+                <span>📚</span>
+                <span>Koleksi Modul & Bahan Belajar</span>
+              </h2>
+              <p style="color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.3rem;">
+                Kelola materi default <strong>Bahan Latihan P13</strong> serta unggah <strong>folder materi baru</strong> ke dalam asisten belajar Anda.
+              </p>
+            </div>
+
+            <!-- Upload Action Buttons -->
+            <div class="upload-action-group">
+              <!-- Folder Upload Input -->
+              <input type="file" id="folderUploadInput" webkitdirectory directory multiple style="display: none;">
+              <button class="btn-upload" id="uploadFolderBtn">
+                <span>📁 Upload Folder Baru</span>
+              </button>
+
+              <!-- Single/Multiple Files Upload Input -->
+              <input type="file" id="fileUploadInput" multiple accept=".pdf,.txt,.md,.json,.csv" style="display: none;">
+              <button class="btn-secondary" id="uploadFilesBtn">
+                <span>📄 Upload File Materi</span>
+              </button>
+
+              <!-- Reset to Default Button -->
+              <button class="btn-ghost-sm" id="resetModulesBtn" title="Reset kembali ke 10 Modul Bahan Latihan P13">
+                🔄 Reset Modul
+              </button>
+            </div>
+          </div>
+
+          <!-- Search & Filter Bar -->
+          <div class="modules-search-bar">
+            <span>🔍</span>
+            <input type="text" class="search-input" id="searchModulesInput" placeholder="Cari modul berdasarkan judul, topik, atau isi materi...">
+            <span id="moduleFilterSummary" style="font-size: 0.8rem; color: var(--text-muted); white-space: nowrap;">
+              0 Modul Terpasang
+            </span>
+          </div>
+
+          <!-- Modules Cards Grid -->
+          <div class="modules-grid" id="modulesCardGrid">
+            <!-- Dynamically populated module cards -->
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ==============================================
+       MODALS: READER & SETTINGS
+       ============================================== -->
+
+  <!-- Modal Reader (View Full Module Content) -->
+  <div class="modal-overlay" id="readerModal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span id="readerModalIcon">📖</span>
+          <span id="readerModalTitle">Membaca Modul</span>
+        </div>
+        <button class="btn-icon" id="closeReaderModalBtn">✕</button>
+      </div>
+      <div class="modal-body" id="readerModalBody">
+        <!-- Content rendered here -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="readerAskBotBtn">
+          💬 Tanya Asisten tentang Modul Ini
+        </button>
+        <button class="btn-primary-lg" id="readerMakeQuizBtn">
+          📝 Buat Kuis Modul Ini
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Settings -->
+  <div class="modal-overlay" id="settingsModal">
+    <div class="modal-dialog" style="max-width: 580px;">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>⚙️</span>
+          <span>Pengaturan Sistem & Mesin AI</span>
+        </div>
+        <button class="btn-icon" id="closeSettingsModalBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Mesin Kecerdasan Buatan (AI Engine)</label>
+          <select id="settingAiEngine" class="essay-textarea" style="min-height: 44px; padding: 0.6rem 1rem;">
+            <option value="local">Mode Cerdas Offline (Default - 100% Lokal & Cepat Tanpa Kuota)</option>
+            <option value="gemini">Google Gemini API (Generatif Online - Masukkan API Key)</option>
+            <option value="ollama">Local Ollama LLM (http://localhost:11434)</option>
+          </select>
+        </div>
+
+        <div class="form-group" id="geminiKeyGroup" style="display: none;">
+          <label class="form-label">Google Gemini API Key</label>
+          <input type="password" id="settingGeminiKey" class="essay-textarea" style="min-height: 44px; padding: 0.6rem 1rem;" placeholder="AIzaSy...">
+          <span style="font-size: 0.74rem; color: var(--text-muted);">Kunci API tersimpan di browser Anda secara privat.</span>
+        </div>
+
+        <div class="form-group" id="ollamaConfigGroup" style="display: none;">
+          <label class="form-label">Ollama Host URL & Model</label>
+          <div style="display: flex; gap: 0.5rem;">
+            <input type="text" id="settingOllamaUrl" class="essay-textarea" style="min-height: 44px; flex: 2; padding: 0.6rem;" value="http://localhost:11434">
+            <input type="text" id="settingOllamaModel" class="essay-textarea" style="min-height: 44px; flex: 1; padding: 0.6rem;" value="llama3">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Suara Asisten (Text-to-Speech)</label>
+          <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer;">
+            <input type="checkbox" id="settingSpeechSynthesis" checked>
+            <span style="font-size: 0.88rem;">Aktifkan tombol dengarkan suara jawaban asisten</span>
+          </label>
+        </div>
+
+        <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 1rem; margin-top: 1rem;">
+          <label class="form-label" style="color: #f43f5e;">Zona Reset</label>
+          <button type="button" class="btn-secondary" id="settingClearAllDataBtn" style="color: #f43f5e; border-color: rgba(244, 63, 94, 0.3);">
+            ⚠️ Hapus Seluruh Riwayat Chat & Modul Upload
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-primary-lg" id="saveSettingsBtn">
+          Simpan Pengaturan
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Toast Notification -->
+  <div id="toastNotification" style="position: fixed; bottom: 24px; right: 24px; background: #1e293b; color: #fff; border: 1px solid var(--border-focus); padding: 0.85rem 1.4rem; border-radius: var(--radius-md); box-shadow: var(--shadow-lg); z-index: 200; display: none; align-items: center; gap: 0.6rem; font-size: 0.88rem;">
+    <span id="toastIcon">ℹ️</span>
+    <span id="toastMessage">Pemberitahuan</span>
+  </div>
+
+  <!-- App Core JavaScript Modules -->
+  <script src="js/default_modules.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/file_loader.js"></script>
+  <script src="js/nlp_engine.js"></script>
+  <script src="js/quiz_engine.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
