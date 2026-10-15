@@ -485,52 +485,67 @@ class NLPEngine {
       }
     }
 
-    // 1. Concept Query with Active Module Match
+    // Dynamic conversational openers for natural dialogue
+    const friendlyOpeners = [
+      `Halo${userGreeting}! Pertanyaan bagus banget nih, mari kita bahas ya.`,
+      `Wah, topik ini seru banget untuk dipahami${userGreeting}! Jadi begini ceritanya:`,
+      `Tentu${userGreeting}! Konsep ini sering sekali muncul dalam ujian dan penting untuk dipahami secara menyeluruh:`,
+      `Nah${userGreeting}, mari kita kupas pelan-pelan agar kamu bisa membayangkannya dengan jelas:`
+    ];
+    const pickOpener = () => friendlyOpeners[Math.floor(Math.random() * friendlyOpeners.length)];
+
+    // 1. Concept Query with Active Module Match (Warm, conversational pedagogical synthesis)
     if (matchedConcept && analysis.isModuleRelated && analysis.primaryMatch) {
       const match = analysis.primaryMatch;
       const mod = match.module;
       const sec = match.bestSection;
-      const contentSnippet = sec ? sec.content : match.bestParagraph;
-      const keySentences = this.extractRelevantSentences(analysis.tokens, contentSnippet, 3);
 
-      let responseMd = `### 💡 Penjelasan Konsep: ${matchedConcept.title}\n\n`;
-      responseMd += `Berdasarkan materi yang dipelajari pada **${mod.title}** (${matchedConcept.subject}):\n\n`;
-      responseMd += `**1. Definisi & Karakteristik:**\n${matchedConcept.definition}\n\n`;
-      responseMd += `**2. Fungsi & Mekanisme Kerja:**\n${matchedConcept.mechanism}\n\n`;
+      let responseText = `${pickOpener()}\n\n`;
+      responseText += `Dalam materi **${mod.title}** (*${matchedConcept.subject}*), **${matchedConcept.title}** memegang peranan penting. ${matchedConcept.definition}\n\n`;
+      responseText += `**Bagaimana cara kerjanya di dalam tubuh/sistem?**\n${matchedConcept.mechanism}\n\n`;
+
       if (matchedConcept.keyPoints && matchedConcept.keyPoints.length > 0) {
-        responseMd += `**3. Poin-Poin Penting:**\n${matchedConcept.keyPoints.map(p => `- ${p}`).join('\n')}\n\n`;
+        responseText += `Ada beberapa poin penting yang perlu kamu ingat baik-baik:\n`;
+        matchedConcept.keyPoints.forEach(kp => {
+          responseText += `✨ ${kp}\n`;
+        });
+        responseText += `\n`;
       }
-      if (keySentences.length > 0) {
-        responseMd += `**4. Konteks Kalimat dalam Modul:**\n> *"${keySentences[0]}"*\n\n`;
-      }
-      responseMd += `💡 *Tips Belajar:* Anda dapat membuat kuis latihan untuk bab ini di menu **Generator Kuis**!`;
+
+      responseText += `Bagaimana${userGreeting}, sekarang sudah lebih terbayang kan konsepnya? Kalau kamu mau menguji pemahamanmu, kita bisa langsung bikin latihan soal di menu **Generator Kuis** di atas lho! Mau lanjut bahas bagian yang mana lagi? 😊`;
 
       return {
-        text: responseMd,
+        text: responseText,
         isModuleRelated: true,
         badgeType: 'module-match',
-        badgeText: `📚 Materi Modul: ${mod.subject || mod.title}`,
+        badgeText: `📚 Modul: ${mod.subject || mod.title}`,
         citation: {
           moduleTitle: mod.title,
           sectionTitle: sec ? sec.title : 'Bab Materi',
-          snippet: contentSnippet ? contentSnippet.slice(0, 250) + '...' : ''
+          snippet: `${matchedConcept.title}: ${matchedConcept.definition.slice(0, 150)}...`
         }
       };
     }
 
-    // 2. Concept Query without Module (Direct General Pedagogical Explanation)
+    // 2. Concept Query without Module (Direct Conversational Explanation)
     if (matchedConcept) {
-      let responseMd = `### 💡 Penjelasan Konsep: ${matchedConcept.title}\n`;
-      responseMd += `*Bidang: ${matchedConcept.subject}*\n\n`;
-      responseMd += `**1. Definisi:**\n${matchedConcept.definition}\n\n`;
-      responseMd += `**2. Fungsi & Mekanisme Kerja:**\n${matchedConcept.mechanism}\n\n`;
+      let responseText = `${pickOpener()}\n\n`;
+      responseText += `Mengenai **${matchedConcept.title}** pada bidang *${matchedConcept.subject}*:\n\n`;
+      responseText += `${matchedConcept.definition}\n\n`;
+      responseText += `**Cara Kerja & Perannya:**\n${matchedConcept.mechanism}\n\n`;
+
       if (matchedConcept.keyPoints && matchedConcept.keyPoints.length > 0) {
-        responseMd += `**3. Poin Kunci untuk Diingat:**\n${matchedConcept.keyPoints.map(p => `- ${p}`).join('\n')}\n\n`;
+        responseText += `**Poin Kunci yang Perlu Diingat:**\n`;
+        matchedConcept.keyPoints.forEach(kp => {
+          responseText += `• ${kp}\n`;
+        });
+        responseText += `\n`;
       }
-      responseMd += `Semoga membantu pemahaman Anda${userGreeting}! Jika Anda memiliki modul pelajaran terkait topik ini, silakan unggah di menu **Koleksi Modul** untuk latihan kuis.`;
+
+      responseText += `Semoga penjelasannya bikin kamu makin paham ya${userGreeting}! Kalau kamu punya modul atau catatan materi terkait ini, bisa langsung kamu upload di menu **Koleksi Modul** agar kita bisa jadikan bahan kuis interaktif. Ada hal lain yang bikin kamu penasaran?`;
 
       return {
-        text: responseMd,
+        text: responseText,
         isModuleRelated: false,
         badgeType: 'contextual-out',
         badgeText: `📖 Konsep: ${matchedConcept.subject.split('-')[0].trim()}`,
@@ -579,7 +594,7 @@ class NLPEngine {
     const listRegex = /([a-zA-Z0-9\s]{3,50})\s+(?:terdiri\s+dari|mencakup|meliputi|tersusun\s+atas|terbagi\s+menjadi)\s+([^.!?\n]+)/gi;
     let listMatch;
     while ((listMatch = listRegex.exec(text)) !== null) {
-      const subject = listMatch[1].trim();
+      const subject = listMatch[1].split(/\n+/).pop().trim();
       const rawItems = listMatch[2].split(/,|\bdan\b|\batau\b/i).map(s => s.trim()).filter(s => s.length > 1);
       relations.lists.push({
         subject: subject,
@@ -621,22 +636,30 @@ class NLPEngine {
     // Check if the query asks about a specific entity or alias from a parsed list
     let matchedEntityInList = null;
     let parentList = null;
+    let highestEntityScore = 0;
 
     if (relations && relations.lists.length > 0) {
       for (const list of relations.lists) {
         for (const item of list.items) {
           const itemLower = item.toLowerCase();
-          // Check exact word or alias match in tokens
-          for (const token of analysis.tokens) {
-            if (itemLower.includes(token) || (relations.aliases[token] && itemLower.includes(relations.aliases[token]))) {
-              matchedEntityInList = item;
-              parentList = list;
-              break;
-            }
+          const cleanItemLower = itemLower.replace(/\([^)]*\)/g, '').trim();
+          let score = 0;
+
+          if (qLower.includes(cleanItemLower) && cleanItemLower.length > 2) {
+            score += 10;
           }
-          if (matchedEntityInList) break;
+
+          for (const token of analysis.tokens) {
+            if (itemLower.includes(token)) score += 2;
+            if (relations.aliases[token] && itemLower.includes(relations.aliases[token])) score += 5;
+          }
+
+          if (score > highestEntityScore && score >= 2) {
+            highestEntityScore = score;
+            matchedEntityInList = item;
+            parentList = list;
+          }
         }
-        if (matchedEntityInList) break;
       }
     }
 
@@ -865,16 +888,7 @@ ATURAN MENJAWAB:
       return this.synthesizeNaturalResponse(query, analysis);
     }
   }
-          badgeText: `🦙 Ollama (${settings.ollamaModel})`,
-          citation: activeMatch ? { moduleTitle: activeMatch.module.title, sectionTitle: 'Local LLM', snippet: '' } : null
-        };
-      }
-      throw new Error('Ollama response empty');
-    } catch (e) {
-      console.warn('Ollama call failed, falling back to local engine:', e);
-      return this.synthesizeNaturalResponse(query, analysis);
-    }
-  }
 }
 
 window.nlpEngine = new NLPEngine();
+
